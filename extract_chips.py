@@ -9,9 +9,9 @@ import sys
 import argparse
 import numpy as np
 import pandas as pd
-from PIL import Image
+from PIL import Image, ImageOps, ImageFilter
 
-from rcode import *
+# from rcode import *
 from matplotlib import pyplot as plt
 from matplotlib.ticker import (AutoMinorLocator, MultipleLocator)
 
@@ -36,7 +36,8 @@ os.makedirs(args.outdir, exist_ok=True)
 # IO
 
 img         = Image.open(args.inpath)
-field_names = pd.read_excel('data/field_names.xlsx', header=None).values
+field_names = pd.read_excel('data/field_names.xlsx', header=None, engine='openpyxl')
+field_names = field_names.values
 
 # --
 # Grid lines
@@ -56,6 +57,14 @@ hlines = [
 # --
 # Extract chips
 
+def clean(chip):
+  # Preprocessing to try to get OCR to work better
+  chip = ImageOps.grayscale(chip)
+  # chip = chip.resize((chip.size[0] * 2, chip.size[1] * 2), Image.BICUBIC)
+  chip = chip.filter(ImageFilter.SHARPEN)
+  # chip = chip.filter(ImageFilter.SHARPEN)
+  return chip
+
 img = np.asarray(img)
 
 for c in range(len(vlines) - 1):
@@ -69,5 +78,9 @@ for c in range(len(vlines) - 1):
     
     chip    = img[r_start:r_stop, c_start:c_stop]
     outpath = f'{args.outdir}/{field_names[r, c]}.png'
-    Image.fromarray(chip).save(outpath)
+    
+    chip = Image.fromarray(chip)
+    chip = clean(chip)
+    chip.save(outpath)
+    print(f'writing {outpath}')
 
